@@ -1,0 +1,1 @@
+import { NextResponse } from 'next/server'\nimport { prisma } from '@/lib/prisma'\n\nexport async function GET() {\n  const items = await prisma.package.findMany({ orderBy: { priceEtb: 'desc' } })\n  return NextResponse.json({ items })\n}\n

@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum Subject {
+  ENGLISH
+  MATH
+  PHYSICS
+  BIOLOGY
+  CHEMISTRY
+  ECONOMICS
+  BUSINESS
+  CIVICS
+  AKABABI_SCIENCE
+  HIBRETESEB_SCIENCE
+}
+
+enum RequestStatus {
+  PENDING_TEACHER
+  ACCEPTED_BY_TEACHER
+  DENIED_BY_TEACHER
+  PENDING_ADMIN
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  ACTIVE
+  PAUSED
+  SUSPENDED
+  CANCELLED
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum TeacherStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id              String          @id @default(cuid())
+  email           String          @unique
+  passwordHash    String
+  role            Role
+  name            String
+  age             Int?
+  gender          String?
+  region          String?
+  city            String?
+  kebele          String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  student         StudentProfile?
+  teacher         TeacherProfile?
+  // Back-relations
+  studentRequests TutorRequest[]  @relation("StudentRequests")
+  payments        Payment[]
+}
+
+model StudentProfile {
+  id                 String @id @default(cuid())
+  user               User   @relation(fields: [userId], references: [id])
+  userId             String @unique
+  class              String
+  nationalIdFrontUrl String
+  nationalIdBackUrl  String
+}
+
+model TeacherProfile {
+  id                 String              @id @default(cuid())
+  user               User                @relation(fields: [userId], references: [id])
+  userId             String              @unique
+  photoUrl           String?
+  university         String
+  department         String
+  academicGrade      String
+  universityIdUrl    String?
+  nationalIdFrontUrl String
+  nationalIdBackUrl  String
+  subjects           Subject[]
+  preferredGrades    Int[]
+  status             TeacherStatus       @default(PENDING)
+  reviewNotes        String?
+  feePayments        TeacherFeePayment[]
+  listing            TutorListing?
+  // Back-relations
+  requests           TutorRequest[]
+}
+
+model TeacherFeePayment {
+  id           String         @id @default(cuid())
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id])
+  teacherId    String
+  method       String
+  payerDetails String?
+  amount       Int
+  receiptUrl   String
+  status       PaymentStatus  @default(PENDING)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime       @default(now())
+}
+
+model TutorListing {
+  id         String         @id @default(cuid())
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id])
+  teacherId  String         @unique
+  visible    Boolean        @default(false)
+  approvedAt DateTime?
+}
+
+model Package {
+  id              String         @id @default(cuid())
+  name            String         @unique
+  sessionsPerWeek Int
+  hoursPerSession Int
+  priceEtb        Int
+  // Back-relations
+  requests        TutorRequest[]
+}
+
+model TutorRequest {
+  id         String         @id @default(cuid())
+  student    User           @relation("StudentRequests", fields: [studentId], references: [id])
+  studentId  String
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id])
+  teacherId  String
+  package    Package        @relation(fields: [packageId], references: [id])
+  packageId  String
+  days       Int[]
+  timeSlot   String
+  status     RequestStatus  @default(PENDING_TEACHER)
+  auditTrail Json?
+  createdAt  DateTime       @default(now())
+  // Back-relations
+  payments   Payment[]
+  booking    Booking?
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  payer          User          @relation(fields: [payerId], references: [id])
+  payerId        String
+  tutorRequest   TutorRequest  @relation(fields: [tutorRequestId], references: [id])
+  tutorRequestId String
+  method         String
+  amount         Int
+  receiptUrl     String
+  status         PaymentStatus @default(PENDING)
+  confirmedById  String?
+  confirmedAt    DateTime?
+  createdAt      DateTime      @default(now())
+}
+
+model Booking {
+  id              String             @id @default(cuid())
+  tutorRequest    TutorRequest       @relation(fields: [tutorRequestId], references: [id])
+  tutorRequestId  String             @unique
+  startDate       DateTime
+  status          BookingStatus      @default(ACTIVE)
+  nextBillingDate DateTime?
+  attendances     WeeklyAttendance[]
+}
+
+model WeeklyAttendance {
+  id             String   @id @default(cuid())
+  booking        Booking  @relation(fields: [bookingId], references: [id])
+  bookingId      String
+  weekStart      DateTime
+  studentConfirm Boolean?
+  teacherConfirm Boolean?
+  status         String
+  escalated      Boolean  @default(false)
+  notes          String?
+}
+
+model AdminActionLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  targetType String
+  targetId   String
+  action     String
+  notes      String?
+  createdAt  DateTime @default(now())
+}

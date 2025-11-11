@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --bg: #f8fafc; }
+body { background: var(--bg); }
+
+/* Smooth focus ring and transitions */
+* { outline-color: theme(colors.brand.600); }
+
